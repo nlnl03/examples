@@ -8,6 +8,9 @@
       </div>
     </div>
   </div>
+  
+  <h2>aws example</h2>
+
 
   <div class="table">
     <Qtable />
@@ -121,5 +124,8 @@ export default {
   display: flex;
   justify-content: center;
   width: 100%;
+}
+h2{
+  text-align: center;
 }
  </style>
