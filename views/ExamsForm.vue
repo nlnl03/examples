@@ -1,74 +1,89 @@
 <template>
-  <div class="exam">
-    <h2>Exam {{ examId }}</h2>
-    <button @click="fetchQuestions">Start Exam</button>
-    <div v-if="questions.length" class="parts">
-      <div v-for="(part, index) in data.parts" :key="index" class="part">
-        <h3>Part {{ index + 1 }}</h3>
-        <ul>
-          <li v-for="(question, qIndex) in questions[index]" :key="qIndex">
-            {{ question }}
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
+  <q-layout>
+    <q-page-container>
+      <q-page>
+        <q-card>
+          <q-card-section>
+            <q-form @submit.prevent="submitForm">
+              <q-input filled v-model="exam.name" label="Exam Name" required />
+              <q-select
+                filled
+                v-model="exam.partCount"
+                label="Number of Parts"
+                :options="partOptions"
+                required
+                @input="createPartInputs"
+              />
+              <div v-for="part in exam.parts" :key="part.id">
+                <q-input
+                  filled
+                  v-model="part.title"
+                  :label="'Title of Part ' + (part.id + 1)"
+                  required
+                />
+                <q-btn
+                  color="primary"
+                  label="Add Question"
+                  @click="addQuestion(part)"
+                />
+                <div v-for="(question, index) in part.questions" :key="index">
+                  <q-input
+                    filled
+                    v-model="question.text"
+                    :label="
+                      'Question ' + (index + 1) + ' of Part ' + (part.id + 1)
+                    "
+                    required
+                  />
+                </div>
+              </div>
+              <q-btn type="submit" color="primary" label="Submit" />
+            </q-form>
+          </q-card-section>
+        </q-card>
+      </q-page>
+    </q-page-container>
+  </q-layout>
 </template>
 
 <script>
 export default {
-  props: ["examId"],
   data() {
     return {
-      data: null,
-      questions: [],
+      exam: {
+        name: "",
+        partCount: null,
+        parts: [],
+      },
+      partOptions: [1, 2, 3, 4, 5], // Adjust as needed
     };
   },
   methods: {
-    fetchQuestions() {
-      const examId = this.$route.params.id;
-      fetch(`http://localhost:3000/exams/${examId}`)
-        .then((response) => response.json())
-        .then((data) => {
-          this.data = data;
-          const totalQuestions = 10;
-          const totalParts = data.parts.length;
-          const questionsPerPart = Math.floor(totalQuestions / totalParts); // Questions per part
-          let remainingQuestions = totalQuestions % totalParts; // Remaining questions to distribute
-          let allQuestions = [];
-
-          data.parts.forEach((part) => {
-            const shuffledQuestions = this.shuffleArray(part.questions);
-            const numQuestions =
-              questionsPerPart + (remainingQuestions > 0 ? 1 : 0);
-            const selectedQuestions = shuffledQuestions.slice(0, numQuestions);
-            allQuestions.push(selectedQuestions);
-            remainingQuestions--;
-          });
-
-          this.questions = allQuestions;
-        })
-        .catch((error) => console.error("Error fetching data:", error));
-    },
-    shuffleArray(array) {
-      for (let i = array.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [array[i], array[j]] = [array[j], array[i]];
+    createPartInputs() {
+      this.exam.parts = [];
+      for (let i = 0; i < this.exam.partCount; i++) {
+        this.exam.parts.push({
+          id: i,
+          title: "",
+          questions: [],
+        });
       }
-      return array;
+    },
+    addQuestion(part) {
+      part.questions.push({ text: "" });
+    },
+    submitForm() {
+      // Here you can handle the form submission, including sending exam data to the server
+      console.log("Exam Name:", this.exam.name);
+      console.log("Parts:", this.exam.parts);
+      // Reset form after submission if needed
+      this.resetForm();
+    },
+    resetForm() {
+      this.exam.name = "";
+      this.exam.partCount = null;
+      this.exam.parts = [];
     },
   },
 };
 </script>
-
-<style>
-.exam {
-  margin-bottom: 20px;
-}
-
-.part {
-  border: 1px solid #ccc;
-  padding: 10px;
-  margin-bottom: 10px;
-}
-</style>

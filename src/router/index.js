@@ -2,6 +2,7 @@ import { createRouter, createWebHashHistory } from "vue-router";
 import Home from "../../views/HomePage.vue";
 //  import quiz from '../views/quiz.vue';
 import Exam from "../../views/ExamsForm.vue";
+import mainQuiz from "../../views/mainQuiz.vue"
 
 const routes = [
   {
@@ -9,12 +10,17 @@ const routes = [
     name: "Home",
     component: Home,
   },
+  {
+    path: "/mainQuiz",
+    name: "mainQuiz",
+    component: mainQuiz,
+  },
   // {
   //   path: '/quiz',
   //   name: 'quiz',
   //   component: quiz
   // },
-  { path: "/exam/:id", component: Exam, props: true },
+  { path: "/exam", component: Exam, props: true },
 
   // Add more routes as needed
 ];
