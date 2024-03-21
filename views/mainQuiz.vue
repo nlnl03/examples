@@ -131,13 +131,41 @@
           <button @click="resetQuestion(currentQuestion)">Reset</button>
         </template>
       </div>
-      <button @click="nextQuestion">Next</button>
+
+      <button
+        v-if="
+          currentQuestionIndex > 0 &&
+          this.currentQuestionIndex != this.questions.length - 1
+        "
+        @click="prevQuestion"
+      >
+        Previous
+      </button>
+      <button
+        v-if="
+          canProceedToNextQuestion &&
+          currentQuestionIndex !== questions.length - 1
+        "
+        @click="nextQuestion"
+      >
+        Next
+      </button>
+
+      <button
+        v-if="
+          currentQuestionIndex === questions.length - 1 &&
+          canProceedToNextQuestion
+        "
+        @click="submitAnswer"
+      >
+        Submit
+      </button>
     </div>
 
     <!-- Show message when all questions are answered -->
     <div v-if="currentQuestionIndex === null">
       <p>Congratulations! You've completed the quiz.</p>
-      <p>Your grade: {{ grade }}%</p>
+      <p>Your grade: {{ gradeQuiz() }}%</p>
     </div>
   </div>
 </template>
@@ -190,40 +218,66 @@ export default {
           title: "Match the Concepts with Subjects:",
 
           subjects: ["Math", "Science", "History"],
-          bankWords: ["Algebra", "Biology", "World War II"], // Bank words
+          bankWords: [
+            "Algebra",
+            "Geometry",
+            "Biology",
+            "Chemistry",
+            "World War I",
+            "World War II",
+          ],
 
           correctMatches: [
-            { subject: "Math", concept: "Algebra" },
-            { subject: "Science", concept: "Biology" },
-            { subject: "History", concept: "World War II" },
+            { subject: "Math", concepts: ["Algebra"] },
+            { subject: "Science", concepts: ["Biology", "Chemistry"] },
+            { subject: "History", concepts: ["World War I", "World War II"] },
           ],
           table: [], // Will hold the dropped concepts for each subject
         },
       ],
       currentQuestionIndex: 0,
-      selectedOptions: [],
-      selectedCheckboxes: [],
       grade: null,
-      draggedItemIndex: null,
     };
   },
   computed: {
     currentQuestion() {
       return this.questions[this.currentQuestionIndex] || null;
     },
+    canProceedToNextQuestion() {
+      if (this.currentQuestion.type === "multipleChoice") {
+        return this.currentQuestion.selectedOption !== null;
+      } else if (this.currentQuestion.type === "checkbox") {
+        return this.currentQuestion.selectedOption.length > 0;
+      } else if (this.currentQuestion.type === "dragDrop") {
+        var boolCheck = true;
+        this.currentQuestion.sentences.forEach((word) => {
+          if (word == "") {
+            boolCheck = false;
+          }
+        });
+        return boolCheck;
+      } else {
+        return this.currentQuestion.table.length > 0;
+      }
+    },
   },
   methods: {
     nextQuestion() {
       if (this.currentQuestionIndex < this.questions.length - 1) {
         this.currentQuestionIndex++;
-      } else {
-        const grade = this.gradeQuiz();
-        console.log("Quiz Grade:", grade);
-
-        this.currentQuestionIndex = null;
-        console.log(this.questions);
       }
     },
+    prevQuestion() {
+      if (this.currentQuestionIndex > 0) {
+        this.currentQuestionIndex--;
+      }
+    },
+
+    submitAnswer() {
+      this.currentQuestionIndex = null;
+      console.log(this.questions);
+    },
+
     gradeQuiz() {
       let totalQuestions = this.questions.length;
       let correctAnswers = 0;
@@ -239,41 +293,74 @@ export default {
             }
             break;
           case "checkbox":
-            // Check if all selected options are correct
-            console.log("checkbox");
-            question.selectedOption.forEach((selectedOption) => {
-              // Check if the selected option is correct
-              if (question.correctAnswer.includes(selectedOption)) {
-                // Increase the correctAnswers count
-                correctAnswers++;
+            // Initialize a counter for correctly selected options
+            var correctOptionsCount = 0;
+
+            // Loop through each option and check if it's correctly selected
+            question.options.forEach((option, index) => {
+              // Check if the option is correctly selected and selected by the user
+              if (
+                question.correctAnswer.includes(option) &&
+                question.selectedOption[index]
+              ) {
+                correctOptionsCount++;
               }
             });
 
+            // Calculate the total possible correct options
+            var totalPossibleCorrectOptions = question.correctAnswer.length;
+
+            // Calculate the fraction of correct options
+            var fracCorrect = correctOptionsCount / totalPossibleCorrectOptions;
+
+            // Update the grade by the fraction of correct options
+            correctAnswers += fracCorrect;
             break;
+
           case "dragDrop":
-            // Check if the sentence is correctly arranged
-            if (question.sentences.join("") === question.correctAnswer) {
-              correctAnswers++;
-              console.log("dragDrop correct");
+            // Check if the completed sentence matches the correct answer
+            var isCorrect =
+              question.sentences.join("") === question.correctAnswer.join("");
+
+            // If the completed sentence matches the correct answer, increase the grade
+            if (isCorrect) {
+              correctAnswers += 1;
             }
             break;
+
           case "dragDropTable":
-            // Check if all subjects have correct matches
-            var allMatchesCorrect = true;
-            question.table.forEach((column, columnIndex) => {
-              if (
-                column.length === 0 ||
-                column[0] !== question.correctMatches[columnIndex].concept
-              ) {
-                allMatchesCorrect = false;
+            // Initialize a counter for correctly matched concepts
+            var correctConceptsCount = 0;
+
+            // Loop through each subject and its associated correct concepts
+            question.correctMatches.forEach((correctMatch) => {
+              const { subject, concepts } = correctMatch;
+              const subjectIndex = question.subjects.indexOf(subject);
+              if (subjectIndex !== -1) {
+                // Check if all concepts in the table match the correct concepts for the subject
+                if (
+                  question.table[subjectIndex] &&
+                  question.table[subjectIndex].every((concept) =>
+                    concepts.includes(concept)
+                  )
+                ) {
+                  // If all concepts match, increment correctConceptsCount by the number of correct concepts for this subject
+                  correctConceptsCount += concepts.length;
+                }
               }
             });
-            if (allMatchesCorrect) {
-              correctAnswers++;
-              console.log("dragDropTable correct");
-            }
-            break;
-          default:
+
+            // Calculate the total possible concepts
+            var totalPossibleConcepts = question.correctMatches.reduce(
+              (total, match) => total + match.concepts.length,
+              0
+            );
+
+            // Calculate the fraction of correct concepts
+            var fractionCorrect = correctConceptsCount / totalPossibleConcepts;
+
+            // Update the grade by the fraction of correct concepts
+            correctAnswers += fractionCorrect;
             break;
         }
       });
@@ -328,6 +415,16 @@ export default {
           break;
       }
     },
+  },
+  created() {
+    this.questions.forEach((question) => {
+      if (question.type === "dragDrop") {
+        question.initialBankWords = [...question.bankWords]; // Store initial bank words
+        question.initialSentences = JSON.parse(
+          JSON.stringify(question.sentences)
+        ); // Store initial sentences
+      }
+    });
   },
 };
 </script>
